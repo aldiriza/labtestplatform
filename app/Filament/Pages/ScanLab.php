@@ -31,6 +31,14 @@ class ScanLab extends Page implements HasForms
     public ?array $resultData = [];
     public array $recentScans = [];
 
+    protected function getForms(): array
+    {
+        return [
+            'form',
+            'resultForm',
+        ];
+    }
+
     protected function addToHistory(Material $material, string $statusLabel)
     {
         array_unshift($this->recentScans, [
@@ -145,17 +153,19 @@ class ScanLab extends Page implements HasForms
         $this->reset(['scannedMaterial', 'resultData']);
     }
 
-    public function getResultFormSchema(): array
+    public function resultForm(Form $form): Form
     {
-        return [
-            Select::make('test_result')
-                ->options(['pass' => 'Pass', 'fail' => 'Fail'])
-                ->required(),
-            FileUpload::make('result_file_path')
-                ->label('PDF Report')
-                ->acceptedFileTypes(['application/pdf'])
-                ->directory('test-results'),
-            Textarea::make('test_remarks'),
-        ];
+        return $form
+            ->schema([
+                Select::make('test_result')
+                    ->options(['pass' => 'Pass', 'fail' => 'Fail'])
+                    ->required(),
+                FileUpload::make('result_file_path')
+                    ->label('PDF Report')
+                    ->acceptedFileTypes(['application/pdf'])
+                    ->directory('test-results'),
+                Textarea::make('test_remarks'),
+            ])
+            ->statePath('resultData');
     }
 }
