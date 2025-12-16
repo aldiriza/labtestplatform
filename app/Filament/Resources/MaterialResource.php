@@ -100,9 +100,10 @@ class MaterialResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
-                        'scheduled' => 'info',
-                        'arrived' => 'gray',
-                        'lab_ready_for_pickup' => 'info',
+                        'scheduled' => 'gray',
+                        'arrived' => 'info',
+                        'lab_ready_for_pickup' => 'warning',
+                        'received_at_lab' => 'warning',
                         'lab_in_progress' => 'warning',
                         'completed' => 'success',
                         'rejected' => 'danger',

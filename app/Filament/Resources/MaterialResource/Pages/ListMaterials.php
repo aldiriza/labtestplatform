@@ -19,4 +19,27 @@ class ListMaterials extends ListRecords
             Actions\CreateAction::make(),
         ];
     }
+
+    public function getTabs(): array
+    {
+        return [
+            'all' => \Filament\Resources\Components\Tab::make('All Materials'),
+            'scheduled' => \Filament\Resources\Components\Tab::make('Scheduled')
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'scheduled'))
+                ->badge(\App\Models\Material::query()->where('status', 'scheduled')->count())
+                ->badgeColor('gray'),
+            'incoming' => \Filament\Resources\Components\Tab::make('Incoming')
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'arrived'))
+                ->badge(\App\Models\Material::query()->where('status', 'arrived')->count())
+                ->badgeColor('info'),
+            'lab' => \Filament\Resources\Components\Tab::make('In Lab')
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->whereIn('status', ['lab_in_progress', 'lab_ready_for_pickup']))
+                ->badge(\App\Models\Material::query()->whereIn('status', ['lab_in_progress', 'lab_ready_for_pickup'])->count())
+                ->badgeColor('warning'),
+            'completed' => \Filament\Resources\Components\Tab::make('Completed')
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'completed'))
+                ->badge(\App\Models\Material::query()->where('status', 'completed')->count())
+                ->badgeColor('success'),
+        ];
+    }
 }

@@ -8,19 +8,25 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class MaterialStatsOverview extends BaseWidget
 {
+    protected static ?int $sort = 1;
+
     protected function getStats(): array
     {
         return [
-            Stat::make('Pending (Incoming)', Material::where('status', 'incoming')->count())
-                ->description('Waiting for Lab')
-                ->descriptionIcon('heroicon-m-arrow-right-circle')
+            Stat::make('Scheduled', Material::where('status', 'scheduled')->count())
+                ->description('Waiting to arrive')
+                ->descriptionIcon('heroicon-m-calendar')
                 ->color('gray'),
-            Stat::make('In Lab Processing', Material::whereIn('status', ['received_at_lab', 'testing_in_progress'])->count())
-                ->description('Currently being tested')
+            Stat::make('Arrived', Material::where('status', 'arrived')->count())
+                ->description('Ready for Lab')
+                ->descriptionIcon('heroicon-m-check')
+                ->color('info'),
+            Stat::make('In Lab', Material::whereIn('status', ['lab_ready_for_pickup', 'lab_in_progress', 'received_at_lab'])->count())
+                ->description('Testing in progress')
                 ->descriptionIcon('heroicon-m-beaker')
                 ->color('warning'),
-            Stat::make('Completed Tests', Material::where('status', 'completed')->count())
-                ->description('Total finished')
+            Stat::make('Lab Out', Material::where('status', 'completed')->count())
+                ->description('Completed')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),
         ];
