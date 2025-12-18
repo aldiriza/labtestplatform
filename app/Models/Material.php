@@ -12,22 +12,26 @@ class Material extends Model
 
     protected $fillable = [
         'unique_id',
-        'material_name',
+        'item_description', // Was material_name
+        'part_number',
+        'specification',
+        'brand',
+        'category',
+        'unit',
+        'location',
+        'minimum_stock',
+        'quantity', // Stock
         'supplier',
-        'color',
-        'shoe_style',
-        'article_no',
         'po_number',
         'lot_number',
-        'quantity',
-        'status',
+        'status', // Keeping for flow
         'test_result',
         'test_remarks',
         'lab_received_at',
         'test_completed_at',
         'result_file_path',
         'sla_due_at',
-        'lot_arrival_date',
+        'lot_arrival_date', // "Date" in excel?
     ];
 
     protected $casts = [

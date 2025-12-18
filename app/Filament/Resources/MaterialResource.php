@@ -25,52 +25,39 @@ class MaterialResource extends Resource
 
         return $form
             ->schema([
-                Forms\Components\Group::make()->schema([
-                    Forms\Components\TextInput::make('unique_id')
-                        ->disabled()
-                        ->dehydrated(false)
-                        ->visibleOn('edit'),
-                    Forms\Components\TextInput::make('material_name')->required(),
-                    Forms\Components\TextInput::make('supplier')->required(),
-                    Forms\Components\TextInput::make('color')->required(),
-                    Forms\Components\TextInput::make('shoe_style')->required(),
-                    Forms\Components\TextInput::make('article_no')->required(),
-                    Forms\Components\TextInput::make('po_number')->required(),
-                    Forms\Components\TextInput::make('lot_number')->required(),
-                    Forms\Components\TextInput::make('quantity')->required()->numeric(),
-                    Forms\Components\DatePicker::make('lot_arrival_date')->required()->default(now()),
-                ])->disabled(!$isPurchasing)->columns(2),
-
-                Forms\Components\Group::make()->schema([
-                    Forms\Components\Select::make('status')
+                Forms\Components\Section::make('Material Details')->schema([
+                    Forms\Components\TextInput::make('item_description')
+                        ->required()
+                        ->columnSpanFull(),
+                    Forms\Components\TextInput::make('part_number'),
+                    Forms\Components\TextInput::make('specification'),
+                    Forms\Components\TextInput::make('brand'),
+                    Forms\Components\TextInput::make('category')
+                        ->label('Material Type'),
+                    Forms\Components\Select::make('unit')
                         ->options([
-                            'scheduled' => 'Scheduled (Purchasing)',
-                            'arrived' => 'Arrived at Incoming',
-                            'lab_ready_for_pickup' => 'Lab Ready for Pickup',
-                            'lab_in_progress' => 'Lab In Progress',
-                            'completed' => 'Completed',
-                            'rejected' => 'Rejected',
-                        ])
-                        ->default('scheduled')
+                            'LOT' => 'LOT', 'EA' => 'EA', 'PAC' => 'PAC', 'SET' => 'SET',
+                            'BTL' => 'BTL', 'CAN' => 'CAN', 'BOX' => 'BOX', 'KGS' => 'KGS',
+                            'MTR' => 'MTR', 'PCS' => 'PCS', 'ROL' => 'ROL', 'PC' => 'PC',
+                            'DRUM' => 'DRUM', 'PAIL' => 'PAIL'
+                        ]),
+                    Forms\Components\TextInput::make('location'),
+                    Forms\Components\TextInput::make('minimum_stock')
+                        ->numeric()
+                        ->default(0),
+                    Forms\Components\TextInput::make('quantity')
+                        ->label('Current Stock (Qty)')
+                        ->numeric()
                         ->required(),
-                    // Test Result is edited by Lab via Scanner mostly, but allow partial edit in form
-                    Forms\Components\Select::make('test_result')
-                        ->options(['pass' => 'Pass', 'fail' => 'Fail']),
-                    Forms\Components\FileUpload::make('result_file_path')
-                        ->label('Test Result PDF')
-                        ->acceptedFileTypes(['application/pdf'])
-                        ->directory('test-results')
-                        ->columnSpanFull(),
-                    Forms\Components\Textarea::make('test_remarks')
-                        ->columnSpanFull(),
-                ])->disabled(!$isPurchasing), // Strictly lock Status/Result editing in Resource View too? User said "material related info" (name, supplier etc). 
-                // But generally only Purchasing modifies 'database'. Lab uses Scanner. So locking ALL form is safer.
+                ])->columns(2),
 
-                Forms\Components\Group::make()->schema([
-                    Forms\Components\DateTimePicker::make('sla_due_at')->readOnly(),
-                    Forms\Components\DateTimePicker::make('lab_received_at')->readOnly(),
-                    Forms\Components\DateTimePicker::make('test_completed_at')->readOnly(),
-                ])->columns(3),
+                Forms\Components\Section::make('Additional Info')->schema([
+                     Forms\Components\TextInput::make('unique_id')->disabled()->dehydrated(false)->visibleOn('edit'),
+                     Forms\Components\TextInput::make('supplier'),
+                     Forms\Components\TextInput::make('po_number'),
+                     Forms\Components\TextInput::make('lot_number')->label('Batch No'),
+                     Forms\Components\DatePicker::make('lot_arrival_date')->label('Date'),
+                ])->collapsed(),
             ]);
     }
 
@@ -78,66 +65,21 @@ class MaterialResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('unique_id')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('material_name')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('supplier')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('color')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('shoe_style')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('article_no')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('po_number')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('lot_number')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('quantity')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'scheduled' => 'gray',
-                        'arrived' => 'info',
-                        'lab_ready_for_pickup' => 'warning',
-                        'received_at_lab' => 'warning',
-                        'lab_in_progress' => 'warning',
-                        'completed' => 'success',
-                        'rejected' => 'danger',
-                        default => 'gray',
-                    })
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('test_result')
-                    ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'pass' => 'success',
-                        'fail' => 'danger',
-                        default => 'gray',
-                    })
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('sla_due_at')
-                    ->label('SLA Due')
-                    ->dateTime()
-                    ->sortable()
-                    ->description(fn(Material $record) => $record->sla_due_at && now()->greaterThan($record->sla_due_at) ? 'Overdue' : '')
-                    ->color(fn(Material $record) => $record->sla_due_at && now()->greaterThan($record->sla_due_at) ? 'danger' : 'success'),
-                Tables\Columns\TextColumn::make('lab_received_at')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('test_completed_at')
-                    ->dateTime()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('unique_id')->searchable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('item_description')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('part_number')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('specification')->searchable(),
+                Tables\Columns\TextColumn::make('brand')->searchable(),
+                Tables\Columns\TextColumn::make('category')->label('Material Type')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('unit')->sortable(),
+                Tables\Columns\TextColumn::make('location')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('minimum_stock')->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('quantity')->label('Current Stock')->numeric()->sortable(),
+                
+                // Keeping status hidden if needed, or just removing for now as requested "only yellow".
+                // Date/Created_at
+                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //

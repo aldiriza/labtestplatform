@@ -8,7 +8,6 @@
         <div class="font-mono text-lg font-bold">{{ $record->unique_id }}</div>
     </div>
 
-    <div class="text-center text-sm text-gray-600">
-        {{ $record->material_name }} - {{ $record->color }}
+        {{ $record->item_description }} - {{ $record->part_number ?? $record->specification }}
     </div>
 </div>
