@@ -13,19 +13,19 @@ class MaterialStatsOverview extends BaseWidget
     protected function getStats(): array
     {
         return [
-            Stat::make('Scheduled', Material::where('status', 'scheduled')->count())
+            Stat::make('Scheduled', Material::where('status', \App\Enums\MaterialStatus::Scheduled)->count())
                 ->description('Waiting to arrive')
                 ->descriptionIcon('heroicon-m-calendar')
                 ->color('gray'),
-            Stat::make('Arrived', Material::where('status', 'arrived')->count())
+            Stat::make('Arrived', Material::where('status', \App\Enums\MaterialStatus::Arrived)->count())
                 ->description('Ready for Lab')
                 ->descriptionIcon('heroicon-m-check')
                 ->color('info'),
-            Stat::make('In Lab', Material::whereIn('status', ['lab_ready_for_pickup', 'lab_in_progress', 'received_at_lab'])->count())
+            Stat::make('In Lab', Material::whereIn('status', [\App\Enums\MaterialStatus::LabReceived, \App\Enums\MaterialStatus::InProgress])->count())
                 ->description('Testing in progress')
                 ->descriptionIcon('heroicon-m-beaker')
                 ->color('warning'),
-            Stat::make('Lab Out', Material::where('status', 'completed')->count())
+            Stat::make('Lab Out', Material::where('status', \App\Enums\MaterialStatus::Completed)->count())
                 ->description('Completed')
                 ->descriptionIcon('heroicon-m-check-circle')
                 ->color('success'),

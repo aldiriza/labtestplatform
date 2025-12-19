@@ -21,108 +21,134 @@ class MaterialResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $isPurchasing = auth()->user()->hasRole('purchasing') || auth()->user()->hasRole('admin');
-
         return $form
             ->schema([
-                Forms\Components\Section::make('Material Details')->schema([
-                    Forms\Components\TextInput::make('item_description')
-                        ->required()
-                        ->columnSpanFull(),
-                    Forms\Components\TextInput::make('part_number'),
-                    Forms\Components\TextInput::make('specification'),
-                    Forms\Components\TextInput::make('brand'),
-                    Forms\Components\TextInput::make('category')
-                        ->label('Material Type'),
-                    Forms\Components\Select::make('unit')
-                        ->options([
-                            'LOT' => 'LOT', 'EA' => 'EA', 'PAC' => 'PAC', 'SET' => 'SET',
-                            'BTL' => 'BTL', 'CAN' => 'CAN', 'BOX' => 'BOX', 'KGS' => 'KGS',
-                            'MTR' => 'MTR', 'PCS' => 'PCS', 'ROL' => 'ROL', 'PC' => 'PC',
-                            'DRUM' => 'DRUM', 'PAIL' => 'PAIL'
-                        ]),
-                    Forms\Components\TextInput::make('location'),
-                    Forms\Components\TextInput::make('minimum_stock')
-                        ->numeric()
-                        ->default(0),
-                    Forms\Components\TextInput::make('quantity')
-                        ->label('Current Stock (Qty)')
-                        ->numeric()
-                        ->required(),
-                ])->columns(2),
+                Forms\Components\Group::make()
+                    ->schema([
+                        Forms\Components\Section::make('Master Data (Purchasing)')
+                            ->schema([
+                                Forms\Components\TextInput::make('lab_po_number')->label('Lab PO No.'),
+                                Forms\Components\TextInput::make('po_number')->label('PO No.'),
+                                Forms\Components\TextInput::make('lot_number')->label('Lot No.'),
+                                Forms\Components\TextInput::make('supplier')->label('Supplier'),
+                                Forms\Components\TextInput::make('country_of_supplier')->label('Country'),
+                                Forms\Components\TextInput::make('material_group')->label('Material Group'),
+                                Forms\Components\TextInput::make('material_type')->label('Material Type'),
+                                Forms\Components\TextInput::make('material_name')->label('Material Name')->required(),
+                                Forms\Components\TextInput::make('color')->label('Color'),
+                                Forms\Components\TextInput::make('color_key')->label('Color Key'),
+                                Forms\Components\TextInput::make('mpn')->label('MPN'),
+                                Forms\Components\TextInput::make('article_style')->label('Article Style'),
+                                Forms\Components\TextInput::make('component')->label('Component'),
+                                Forms\Components\TextInput::make('qty')->label('Quantity')->numeric(),
+                                Forms\Components\TextInput::make('bm')->label('BM'),
+                            ])
+                            ->columns(2)
+                            ->disabled(fn ($record) => 
+                                !auth()->user()->isAdmin() && 
+                                ($record && $record->status !== \App\Enums\MaterialStatus::Scheduled) &&
+                                !auth()->user()->hasRole('purchasing')
+                            ),
+                        
+                        Forms\Components\Section::make('Arrival Info')
+                            ->schema([
+                                Forms\Components\DatePicker::make('date_incoming'),
+                            ])
+                            ->columns(1)
+                            ->disabled(fn () => !auth()->user()->isAdmin() && !auth()->user()->hasRole('incoming') && !auth()->user()->hasRole('purchasing')),
+                    ])
+                    ->columnSpan(['lg' => 2]),
 
-                Forms\Components\Section::make('Additional Info')->schema([
-                     Forms\Components\TextInput::make('unique_id')->disabled()->dehydrated(false)->visibleOn('edit'),
-                     Forms\Components\TextInput::make('supplier'),
-                     Forms\Components\TextInput::make('po_number'),
-                     Forms\Components\TextInput::make('lot_number')->label('Batch No'),
-                     Forms\Components\DatePicker::make('lot_arrival_date')->label('Date'),
-                ])->collapsed(),
-            ]);
+                Forms\Components\Group::make()
+                    ->schema([
+                        Forms\Components\Section::make('Status & Workflow')
+                            ->schema([
+                                Forms\Components\Select::make('status')
+                                    ->options(\App\Enums\MaterialStatus::class)
+                                    ->required()
+                                    ->disabled(fn () => !auth()->user()->isAdmin()),
+                                Forms\Components\Placeholder::make('created_at')
+                                    ->content(fn ($record) => $record?->created_at?->diffForHumans()),
+                                Forms\Components\Placeholder::make('updated_at')
+                                    ->content(fn ($record) => $record?->updated_at?->diffForHumans()),
+                            ]),
+                            
+                        Forms\Components\Section::make('Lab Timing')
+                            ->schema([
+                                Forms\Components\DateTimePicker::make('lab_received_at')->disabled(),
+                                Forms\Components\DateTimePicker::make('testing_started_at')->disabled(),
+                                Forms\Components\DateTimePicker::make('test_completed_at')->disabled(),
+                            ]),
+                    ])
+                    ->columnSpan(['lg' => 1]),
+            ])
+            ->columns(3);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('unique_id')->searchable()->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('item_description')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('part_number')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('specification')->searchable(),
-                Tables\Columns\TextColumn::make('brand')->searchable(),
-                Tables\Columns\TextColumn::make('category')->label('Material Type')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('unit')->sortable(),
-                Tables\Columns\TextColumn::make('location')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('minimum_stock')->numeric()->sortable(),
-                Tables\Columns\TextColumn::make('quantity')->label('Current Stock')->numeric()->sortable(),
-                
-                // Keeping status hidden if needed, or just removing for now as requested "only yellow".
-                // Date/Created_at
+                Tables\Columns\TextColumn::make('status')
+                    ->badge(),
+                Tables\Columns\TextColumn::make('lab_po_number')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('material_name')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('supplier')->searchable()->sortable(),
+                Tables\Columns\TextColumn::make('lot_number')->searchable(),
+                Tables\Columns\TextColumn::make('qty')->numeric()->sortable(),
+                Tables\Columns\TextColumn::make('lab_received_at')->dateTime()->sortable(),
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                Tables\Filters\SelectFilter::make('status')
+                    ->options(\App\Enums\MaterialStatus::class),
+                Tables\Filters\SelectFilter::make('supplier')
+                    ->options(fn () => Material::distinct()->pluck('supplier', 'supplier')->toArray()),
             ])
             ->actions([
-                Tables\Actions\Action::make('qr_code')
-                    ->icon('heroicon-o-qr-code')
-                    ->label('QR Code')
-                    ->modalHeading('Material QR Code')
-                    ->modalSubmitAction(false)
-                    ->modalContent(fn(Material $record) => view('filament.resources.materials.qr-code', ['record' => $record])),
-                Tables\Actions\Action::make('receive')
-                    ->label('Receive at Lab')
-                    ->icon('heroicon-o-inbox-arrow-down')
+                Tables\Actions\Action::make('arrive')
+                    ->label('Arrive')
+                    ->icon('heroicon-o-truck')
                     ->color('info')
-                    ->requiresConfirmation()
-                    ->visible(fn(Material $record) => $record->status === 'incoming')
+                    ->visible(fn (Material $record) => $record->status === \App\Enums\MaterialStatus::Scheduled && (auth()->user()->hasRole('incoming') || auth()->user()->isAdmin()))
                     ->action(function (Material $record) {
                         $record->update([
-                            'status' => 'received_at_lab',
-                            'lab_received_at' => now(),
+                            'status' => \App\Enums\MaterialStatus::Arrived,
+                            'date_incoming' => now(),
                         ]);
                     }),
-                Tables\Actions\Action::make('record_result')
-                    ->label('Record Result')
-                    ->icon('heroicon-o-beaker')
-                    ->color('success')
-                    ->form([
-                        Forms\Components\Select::make('test_result')
-                            ->options(['pass' => 'Pass', 'fail' => 'Fail'])
-                            ->required(),
-                        Forms\Components\Textarea::make('test_remarks'),
-                    ])
-                    ->visible(fn(Material $record) => in_array($record->status, ['received_at_lab', 'testing_in_progress']))
-                    ->action(function (Material $record, array $data) {
+                // 'receive_lab' action removed to enforce QR scanning workflow
+                Tables\Actions\Action::make('start_test')
+                    ->label('Start Test')
+                    ->icon('heroicon-o-play')
+                    ->color('primary')
+                    ->visible(fn (Material $record) => $record->status === \App\Enums\MaterialStatus::LabReceived && (auth()->user()->hasRole('lab_tech') || auth()->user()->isAdmin()))
+                    ->action(function (Material $record) {
                         $record->update([
-                            'status' => 'completed',
-                            'test_result' => $data['test_result'],
-                            'test_remarks' => $data['test_remarks'] ?? null,
+                            'status' => \App\Enums\MaterialStatus::InProgress,
+                            'testing_started_at' => now(),
+                        ]);
+                    }),
+                Tables\Actions\Action::make('complete_test')
+                    ->label('Complete')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Material $record) => $record->status === \App\Enums\MaterialStatus::InProgress && (auth()->user()->hasRole('lab_tech') || auth()->user()->isAdmin()))
+                    ->action(function (Material $record) {
+                        $record->update([
+                            'status' => \App\Enums\MaterialStatus::Completed,
                             'test_completed_at' => now(),
                         ]);
-                    }),
+                    })
+                    ->requiresConfirmation(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('qr')
+                    ->label('QR Code')
+                    ->icon('heroicon-o-qr-code')
+                    ->modalContent(fn (Material $record) => view('partials.qr-label', ['record' => $record]))
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(false)
+                    ->modalWidth('4xl'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -134,7 +160,8 @@ class MaterialResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\TestResultsRelationManager::class,
+            RelationManagers\TestDocumentsRelationManager::class,
         ];
     }
 

@@ -182,5 +182,5 @@ return [
     |
     */
 
-    'release_token' => 'a',
+    'release_token' => 'b',
 ];

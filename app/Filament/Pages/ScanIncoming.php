@@ -56,19 +56,20 @@ class ScanIncoming extends Page implements \Filament\Forms\Contracts\HasForms
         }
 
         // Incoming: Only Scheduled -> Arrived
-        if ($material->status === 'scheduled') {
+        if ($material->status === \App\Enums\MaterialStatus::Scheduled) {
             $material->update([
-                'status' => 'arrived',
-                'lot_arrival_date' => now(),
+                'status' => \App\Enums\MaterialStatus::Arrived,
+                'date_incoming' => now(),
+                'time_incoming' => now(),
             ]);
 
             $this->addToHistory($material, 'Arrived');
             \Filament\Notifications\Notification::make()->title('Material Arrived')->success()->send();
-        } elseif ($material->status === 'arrived') {
+        } elseif ($material->status === \App\Enums\MaterialStatus::Arrived) {
             \Filament\Notifications\Notification::make()->title('Already Arrived')->warning()->send();
             $this->scannedMaterial = $material; // Show it anyway
         } else {
-            \Filament\Notifications\Notification::make()->title('Invalid Status')->body("Status is {$material->status}, expected Scheduled.")->danger()->send();
+            \Filament\Notifications\Notification::make()->title('Invalid Status')->body("Status is {$material->status->getLabel()}, expected Scheduled.")->danger()->send();
         }
 
         $this->scannedMaterial = $material;

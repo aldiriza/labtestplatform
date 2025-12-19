@@ -13,8 +13,36 @@ class ListMaterials extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ImportAction::make()
-                ->importer(\App\Filament\Imports\MaterialImporter::class)
+            Actions\Action::make('import_excel')
+                ->label('Import Excel')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('success')
+                ->form([
+                    \Filament\Forms\Components\FileUpload::make('attachment')
+                        ->label('Upload Excel File')
+                        ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv'])
+                        ->disk('local') // Temporary storage
+                        ->directory('imports')
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    $file = storage_path('app/imports/' . basename($data['attachment']));
+                    
+                    try {
+                        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\MaterialImport, $file);
+                        
+                        \Filament\Notifications\Notification::make()
+                            ->title('Import Successful')
+                            ->success()
+                            ->send();
+                    } catch (\Exception $e) {
+                         \Filament\Notifications\Notification::make()
+                            ->title('Import Failed')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })
                 ->visible(fn() => auth()->user()->hasRole('admin') || auth()->user()->hasRole('purchasing')),
             Actions\CreateAction::make(),
         ];
@@ -25,20 +53,20 @@ class ListMaterials extends ListRecords
         return [
             'all' => \Filament\Resources\Components\Tab::make('All Materials'),
             'scheduled' => \Filament\Resources\Components\Tab::make('Scheduled')
-                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'scheduled'))
-                ->badge(\App\Models\Material::query()->where('status', 'scheduled')->count())
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\MaterialStatus::Scheduled))
+                ->badge(\App\Models\Material::query()->where('status', \App\Enums\MaterialStatus::Scheduled)->count())
                 ->badgeColor('gray'),
             'incoming' => \Filament\Resources\Components\Tab::make('Incoming')
-                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'arrived'))
-                ->badge(\App\Models\Material::query()->where('status', 'arrived')->count())
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\MaterialStatus::Arrived))
+                ->badge(\App\Models\Material::query()->where('status', \App\Enums\MaterialStatus::Arrived)->count())
                 ->badgeColor('info'),
             'lab' => \Filament\Resources\Components\Tab::make('In Lab')
-                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->whereIn('status', ['lab_in_progress', 'lab_ready_for_pickup']))
-                ->badge(\App\Models\Material::query()->whereIn('status', ['lab_in_progress', 'lab_ready_for_pickup'])->count())
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->whereIn('status', [\App\Enums\MaterialStatus::LabReceived, \App\Enums\MaterialStatus::InProgress]))
+                ->badge(\App\Models\Material::query()->whereIn('status', [\App\Enums\MaterialStatus::LabReceived, \App\Enums\MaterialStatus::InProgress])->count())
                 ->badgeColor('warning'),
             'completed' => \Filament\Resources\Components\Tab::make('Completed')
-                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', 'completed'))
-                ->badge(\App\Models\Material::query()->where('status', 'completed')->count())
+                ->modifyQueryUsing(fn(\Illuminate\Database\Eloquent\Builder $query) => $query->where('status', \App\Enums\MaterialStatus::Completed))
+                ->badge(\App\Models\Material::query()->where('status', \App\Enums\MaterialStatus::Completed)->count())
                 ->badgeColor('success'),
         ];
     }

@@ -32,22 +32,22 @@ class RecentMaterialActivities extends BaseWidget
             ],
             'scheduled' => [
                 'label' => 'Scheduled',
-                'count' => \App\Models\Material::where('status', 'scheduled')->count(),
+                'count' => \App\Models\Material::where('status', \App\Enums\MaterialStatus::Scheduled)->count(),
                 'color' => 'gray',
             ],
             'arrived' => [
                 'label' => 'Arrived',
-                'count' => \App\Models\Material::where('status', 'arrived')->count(),
+                'count' => \App\Models\Material::where('status', \App\Enums\MaterialStatus::Arrived)->count(),
                 'color' => 'info',
             ],
             'lab' => [
                 'label' => 'In Lab',
-                'count' => \App\Models\Material::whereIn('status', ['lab_ready_for_pickup', 'lab_in_progress', 'received_at_lab'])->count(),
+                'count' => \App\Models\Material::whereIn('status', [\App\Enums\MaterialStatus::LabReceived, \App\Enums\MaterialStatus::InProgress])->count(),
                 'color' => 'warning',
             ],
             'completed' => [
                 'label' => 'Lab Out (Completed)',
-                'count' => \App\Models\Material::where('status', 'completed')->count(),
+                'count' => \App\Models\Material::where('status', \App\Enums\MaterialStatus::Completed)->count(),
                 'color' => 'success',
             ],
         ];
@@ -68,10 +68,10 @@ class RecentMaterialActivities extends BaseWidget
                     ->latest('updated_at')
                     ->when($this->activeTab !== 'all', function ($query) {
                         return match ($this->activeTab) {
-                            'scheduled' => $query->where('status', 'scheduled'),
-                            'arrived' => $query->where('status', 'arrived'),
-                            'lab' => $query->whereIn('status', ['lab_ready_for_pickup', 'lab_in_progress', 'received_at_lab']),
-                            'completed' => $query->where('status', 'completed'),
+                            'scheduled' => $query->where('status', \App\Enums\MaterialStatus::Scheduled),
+                            'arrived' => $query->where('status', \App\Enums\MaterialStatus::Arrived),
+                            'lab' => $query->whereIn('status', [\App\Enums\MaterialStatus::LabReceived, \App\Enums\MaterialStatus::InProgress]),
+                            'completed' => $query->where('status', \App\Enums\MaterialStatus::Completed),
                             default => $query,
                         };
                     })
@@ -98,12 +98,12 @@ class RecentMaterialActivities extends BaseWidget
                     ->sortable(),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'scheduled' => 'info',
-                        'arrived' => 'gray',
-                        'lab_in_progress' => 'warning',
-                        'completed' => 'success',
-                        'rejected' => 'danger',
+                    ->color(fn(\App\Enums\MaterialStatus $state): string => match ($state) {
+                        \App\Enums\MaterialStatus::Scheduled => 'info',
+                        \App\Enums\MaterialStatus::Arrived => 'gray',
+                        \App\Enums\MaterialStatus::InProgress => 'warning',
+                        \App\Enums\MaterialStatus::Completed => 'success',
+                        \App\Enums\MaterialStatus::Rejected => 'danger',
                         default => 'gray',
                     })
                     ->searchable(),

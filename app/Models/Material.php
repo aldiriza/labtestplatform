@@ -12,39 +12,53 @@ class Material extends Model
 
     protected $fillable = [
         'unique_id',
-        'item_description', // Was material_name
-        'part_number',
-        'specification',
-        'brand',
-        'category',
-        'unit',
-        'location',
-        'minimum_stock',
-        'quantity', // Stock
-        'supplier',
+        'lab_po_number',
         'po_number',
         'lot_number',
-        'status', // Keeping for flow
-        'test_result',
-        'test_remarks',
+        'supplier',
+        'country_of_supplier',
+        'material_group',
+        'material_type',
+        'material_name',
+        'color',
+        'color_key',
+        'mpn',
+        'article_style',
+        'component',
+        'qty',
+        'bm',
+        'status',
+        'date_incoming',
         'lab_received_at',
+        'testing_started_at',
         'test_completed_at',
-        'result_file_path',
-        'sla_due_at',
-        'lot_arrival_date', // "Date" in excel?
     ];
 
     protected $casts = [
+        'status' => \App\Enums\MaterialStatus::class,
+        'date_incoming' => 'date',
         'lab_received_at' => 'datetime',
+        'testing_started_at' => 'datetime',
         'test_completed_at' => 'datetime',
-        'sla_due_at' => 'datetime',
-        'lot_arrival_date' => 'date',
     ];
 
     protected static function booted()
     {
         static::creating(function ($material) {
             $material->unique_id = (string) \Illuminate\Support\Str::uuid();
+            if (empty($material->status)) {
+                $material->status = \App\Enums\MaterialStatus::Scheduled;
+            }
         });
+    }
+
+    public function testResults()
+    {
+        return $this->hasMany(MaterialTestResult::class);
+    }
+
+    public function testDocuments()
+    {
+        return $this->hasMany(MaterialTestDocument::class);
     }
 }

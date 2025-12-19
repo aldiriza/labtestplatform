@@ -63,6 +63,7 @@ class ScanLab extends Page implements HasForms
             ->schema([
                 TextInput::make('scanned_code')
                     ->label('Scan QR Code')
+                    ->id('scannerInput')
                     ->autofocus()
                     ->required()
                     ->live(onBlur: true)
@@ -88,7 +89,7 @@ class ScanLab extends Page implements HasForms
 
         // Lab: Only Arrived -> Lab In Progress OR Lab In Progress -> Result
         // Ignore Scheduled items (Incoming's job)
-        if ($material->status === 'scheduled') {
+        if ($material->status === \App\Enums\MaterialStatus::Scheduled) {
             Notification::make()->title('Material Not Arrived')->body('This material has not been received by Incoming yet.')->warning()->send();
             $this->data['scanned_code'] = '';
             return;
@@ -104,32 +105,45 @@ class ScanLab extends Page implements HasForms
     protected function processStatusTransition(Material $material)
     {
         // 1. Arrived -> Lab In Progress
-        if ($material->status === 'arrived') {
+        // 1. Arrived -> Lab Received
+        if ($material->status === \App\Enums\MaterialStatus::Arrived) {
             $material->update([
-                'status' => 'lab_in_progress',
+                'status' => \App\Enums\MaterialStatus::LabReceived,
                 'lab_received_at' => now(),
-                'sla_due_at' => now()->addDays(2), // Rule: 2 Days SLA from check-in
+                // 'sla_due_at' => now()->addDays(2), // SLA might start at InProgress, but let's keep it simple
             ]);
 
-            $this->addToHistory($material, 'Lab In Progress');
+            $this->addToHistory($material, 'Lab Received');
 
             Notification::make()
-                ->title('Check-In Successful')
-                ->body("Material {$material->material_name} is now in Lab.")
+                ->title('Material Received')
+                ->body("{$material->material_name} marked as Received in Lab.")
                 ->success()
                 ->send();
         }
-        // 2. Lab In Progress -> Prompt for Result (Handled in view/modal, here we just notify)
-        elseif ($material->status === 'lab_in_progress') {
+        // 2. Lab Received -> In Progress (Start Test)
+        elseif ($material->status === \App\Enums\MaterialStatus::LabReceived) {
+            $material->update([
+                'status' => \App\Enums\MaterialStatus::InProgress,
+                'testing_started_at' => now(),
+            ]);
+
+            $this->addToHistory($material, 'Test Started');
+
+            Notification::make()
+                ->title('Testing Started')
+                ->body("Testing started for {$material->material_name}.")
+                ->success()
+                ->send();
+        }
+        // 3. Lab In Progress -> Prompt for Result
+        elseif ($material->status === \App\Enums\MaterialStatus::InProgress) {
             Notification::make()
                 ->title('Ready for Result')
                 ->body("Please enter result for {$material->material_name}")
                 ->info()
                 ->send();
-
-            // In a real app, we might open a modal here. 
-            // For now, let's keep it simple: The user sees the form below if material is loaded
-        } elseif ($material->status === 'completed') {
+        } elseif ($material->status === \App\Enums\MaterialStatus::Completed) {
             Notification::make()->title('Already Completed')->warning()->send();
         }
     }
@@ -140,7 +154,7 @@ class ScanLab extends Page implements HasForms
             return;
 
         $this->scannedMaterial->update([
-            'status' => 'completed',
+            'status' => \App\Enums\MaterialStatus::Completed,
             'test_result' => $this->resultData['test_result'],
             'test_remarks' => $this->resultData['test_remarks'] ?? null,
             'result_file_path' => $this->resultData['result_file_path'] ?? null,

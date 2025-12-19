@@ -20,5 +20,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
         ]);
+        
+        \App\Models\Material::factory(100)->create();
     }
 }
